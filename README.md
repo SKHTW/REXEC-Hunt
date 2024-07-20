@@ -9,7 +9,7 @@ Produces a detailed report highlighting potential weaknesses.
 Usage
 Clone the repository:
 
-git clone https://github.com/yourusername/REXEC-Hunt.git
+git clone https://github.com/SKHTW/REXEC-Hunt.git
 
 
 Navigate to the REXEC-Hunt directory:
